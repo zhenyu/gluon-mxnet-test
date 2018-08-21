@@ -139,6 +139,7 @@ drop_prob = 0.2
 eval_period = 1000
 
 ctx = gb.try_gpu()
+print(ctx)
 model = RNNModel(model_name, vocab_size, embed_size, num_hiddens, num_layers,
                  drop_prob)
 model.initialize(init.Xavier(), ctx=ctx)
