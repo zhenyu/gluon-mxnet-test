@@ -47,7 +47,6 @@ class Corpus(object):
         self.test = self.tokenize(path + 'test.txt')
 
     def tokenize(self, path):
-        # 将词语添加至词典。
         with open(path, 'r') as f:
             num_words = 0
             for line in f:
@@ -71,9 +70,10 @@ class Corpus(object):
 
 
 data = '../data/ptb/ptb.'
+print("building data")
 corpus = Corpus(data)
 vocab_size = len(corpus.dictionary)
-vocab_size
+print("building data done, dic size is %d"%vocab_size)
 
 
 # In[5]:
@@ -183,20 +183,22 @@ def detach(state):
 
 def eval_rnn(data_source):
     print('begin to eval test data')
-    l_sum = nd.array([0], ctx=ctx)
-    n = 0
-    time = 0
+    
+    durations=[]
     state = model.begin_state(func=nd.zeros, batch_size=batch_size, ctx=ctx)
     for i in range(0, data_source.shape[0] - 1, num_steps):
         X, y = get_batch(data_source, i)
         begin = time.time()
         output, state = model(X, state)
-        time+ = time.time()-begin
+        durations.append(time.time()-begin)
         #l = loss(output, y)
         #l_sum += l.sum()
-        n += 1
-    print('infer %d times, perplexity %.f'% (n, time/n))
-
+    
+    timings=np.array(durations)
+    n = len(timings)
+    batch_avg = np.mean(timings)*1000
+    sample_avg = batch_avg/batch_size
+    print('infer %d times with batch size %d,  %.8f mean for per batch, %.8f for per sample'% (n, batch_size, batch_avg, sample_avg))
 
 # In[10]:
 
@@ -245,8 +247,6 @@ model.restore_model(model_file_path, ctx)
 
 
 # In[12]:
-
-
-test_l = eval_rnn(test_data)
-
+eval_rnn(test_data)
+sys.exit(0)
 
