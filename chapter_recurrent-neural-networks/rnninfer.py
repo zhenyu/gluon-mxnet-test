@@ -47,6 +47,7 @@ class Corpus(object):
         self.test = self.tokenize(path + 'test.txt')
 
     def tokenize(self, path):
+        # 将词语添加至词典。
         with open(path, 'r') as f:
             num_words = 0
             for line in f:
@@ -70,7 +71,6 @@ class Corpus(object):
 
 
 data = '../data/ptb/ptb.'
-print("building data")
 corpus = Corpus(data)
 vocab_size = len(corpus.dictionary)
 print("building data done, dic size is %d"%vocab_size)
@@ -142,9 +142,6 @@ ctx = gb.try_gpu()
 model = RNNModel(model_name, vocab_size, embed_size, num_hiddens, num_layers,
                  drop_prob)
 model.initialize(init.Xavier(), ctx=ctx)
-trainer = gluon.Trainer(model.collect_params(), 'sgd',
-                        {'learning_rate': lr, 'momentum': 0, 'wd': 0})
-loss = gloss.SoftmaxCrossEntropyLoss()
 
 
 # In[7]:
@@ -170,20 +167,7 @@ def get_batch(source, i):
 # In[8]:
 
 
-def detach(state):
-    if isinstance(state, (tuple, list)):
-        state = [i.detach() for i in state]
-    else:
-        state = state.detach()
-    return state
-
-
-# In[9]:
-
-
 def eval_rnn(data_source):
-    print('begin to eval test data')
-    
     durations=[]
     state = model.begin_state(func=nd.zeros, batch_size=batch_size, ctx=ctx)
     for i in range(0, data_source.shape[0] - 1, num_steps):
@@ -191,62 +175,24 @@ def eval_rnn(data_source):
         begin = time.time()
         output, state = model(X, state)
         durations.append(time.time()-begin)
-        #l = loss(output, y)
-        #l_sum += l.sum()
-    
     timings=np.array(durations)
     n = len(timings)
     batch_avg = np.mean(timings)*1000
     sample_avg = batch_avg/batch_size
     print('infer %d times with batch size %d,  %.8f mean for per batch, %.8f for per sample'% (n, batch_size, batch_avg, sample_avg))
-
-# In[10]:
-
-
-def train_rnn():
-    for epoch in range(1, num_epochs + 1):
-        train_l_sum = nd.array([0], ctx=ctx)
-        start_time = time.time()
-        state = model.begin_state(func=nd.zeros, batch_size=batch_size,
-                                   ctx=ctx)
-        for batch_i, idx in enumerate(range(0, train_data.shape[0] - 1,
-                                          num_steps)):
-            X, y = get_batch(train_data, idx)
-        
-            state = detach(state)
-            with autograd.record():
-                output, state = model(X, state)
-                
-                l = loss(output, y).sum() / (batch_size * num_steps)
-            l.backward()
-            grads = [p.grad(ctx) for p in model.collect_params().values()]
-           
-            gutils.clip_global_norm(
-                grads, clipping_theta * num_steps * batch_size)
-            trainer.step(1)
-            train_l_sum += l
-            if batch_i % eval_period == 0 and batch_i > 0:
-                cur_l = train_l_sum / eval_period
-                print('epoch %d, batch %d, train loss %.2f, perplexity %.2f'
-                      % (epoch, batch_i, cur_l.asscalar(),
-                         cur_l.exp().asscalar()))
-                train_l_sum = nd.array([0], ctx=ctx)
-        val_l = eval_rnn(val_data)
-        print('epoch %d, time %.2fs, valid loss %.2f, perplexity %.2f'
-              % (epoch, time.time() - start_time, val_l.asscalar(),
-                 val_l.exp().asscalar()))
+    
 
 
-# In[11]:
+# In[9]:
 
 
-#train_rnn()
 model_file_path="../checkpoints/rnn.params"
 #model.save_model(model_file_path)
 model.restore_model(model_file_path, ctx)
 
 
-# In[12]:
+# In[10]:
+
+
 eval_rnn(test_data)
-sys.exit(0)
 
