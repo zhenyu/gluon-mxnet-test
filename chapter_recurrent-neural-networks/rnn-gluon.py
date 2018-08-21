@@ -182,16 +182,20 @@ def detach(state):
 
 
 def eval_rnn(data_source):
+    print('begin to eval test data')
     l_sum = nd.array([0], ctx=ctx)
     n = 0
+    time = 0
     state = model.begin_state(func=nd.zeros, batch_size=batch_size, ctx=ctx)
     for i in range(0, data_source.shape[0] - 1, num_steps):
         X, y = get_batch(data_source, i)
+        begin = time.time()
         output, state = model(X, state)
-        l = loss(output, y)
-        l_sum += l.sum()
-        n += l.size
-    return l_sum / n
+        time+ = time.time()-begin
+        #l = loss(output, y)
+        #l_sum += l.sum()
+        n += 1
+    print('infer %d times, perplexity %.f'% (n, time/n))
 
 
 # In[10]:
@@ -244,6 +248,5 @@ model.restore_model(model_file_path, ctx)
 
 
 test_l = eval_rnn(test_data)
-print('test loss %.2f, perplexity %.2f'
-      % (test_l.asscalar(), test_l.exp().asscalar()))
+
 
